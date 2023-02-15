@@ -56,3 +56,19 @@ func LoadBackgroundImageRGBA(path string) (bg *image.RGBA, err error) {
 	draw.Draw(background, background.Bounds(), img, image.Point{}, draw.Src)
 	return background, nil
 }
+
+//func DrawText(img *image.RGBA, text string, font *truetype.Font, opt FontOption) error {
+//	c := freetype.NewContext()
+//	c.SetDPI(opt.DPI)
+//	c.SetFont(font)
+//	c.SetFontSize(opt.FontSize)
+//	c.SetClip(img.Bounds())
+//	c.SetDst(img)
+//	c.SetSrc(image.NewUniform(Black))
+//	pt := freetype.Pt(0, 0)
+//	_, err := c.DrawText(text, pt)
+//	if err != nil {
+//		return fmt.Errorf("draw string error: %s", err)
+//	}
+//	return nil
+//}
