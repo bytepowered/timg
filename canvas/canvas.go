@@ -80,13 +80,18 @@ func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(
 		drawer.Dot.X = fixed.I(c._padding.Left)
 		bound := c._canvas.Bounds()
 		if bound.Dy() < drawer.Dot.Y.Ceil() {
-			canvas := image.NewRGBA(image.Rect(0, 0, bound.Dx(), bound.Dy()+100))
-			draw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: pkg.White}, image.Point{}, draw.Src)
-			draw.Draw(canvas, bound, c._canvas, image.Point{}, draw.Src)
-			c._canvas = canvas
+			srcimg := c._canvas
+			c.resize(bound.Dx(), bound.Dy()+100)
+			draw.Draw(c._canvas, bound, srcimg, image.Point{}, draw.Src)
 			drawer.Dst = c._canvas
 		}
 	}
+}
+
+func (c *Canvas) resize(width, height int) {
+	canvas := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: pkg.White}, image.Point{}, draw.Src)
+	c._canvas = canvas
 }
 
 func (c *Canvas) cutText(drawer *font.Drawer, text string, output []string) []string {
