@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// 创建一个白色背景的矩形图像
-	c, err := canvas.NewCanvas(1032, 2000)
+	c, err := canvas.NewCanvas(1032, 200)
 	if err != nil {
 		panic(err)
 	}
