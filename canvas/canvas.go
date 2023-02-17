@@ -43,21 +43,9 @@ func NewCanvas(width, height int) (*Canvas, error) {
 
 func (c *Canvas) DrawText(opts text.Option, text string) {
 	c.drawTextLines(opts, strings.Split(text, "\n"), func(drawer *font.Drawer, inLines []string) []string {
-		charWidth := drawer.MeasureString("中").Ceil()
 		output := make([]string, 0, len(inLines))
-		// 检查每行文字的长度，如果超过了画布的宽度，则进行换行
-		cutLine := func(line string) {
-			// line: 一行文字
-			overflow := drawer.MeasureString(line).Ceil() - c.ContentWidth()
-			if overflow > charWidth {
-				output = append(output, line)
-				output = append(output, "====================")
-			} else {
-				output = append(output, line)
-			}
-		}
 		for _, line := range inLines {
-			cutLine(line)
+			output = c.cutText(drawer, line, output)
 		}
 		return output
 	})
@@ -91,8 +79,41 @@ func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(
 	}
 }
 
+func (c *Canvas) cutText(drawer *font.Drawer, text string, output []string) []string {
+	oneCharWidth := drawer.MeasureString("中").Ceil()
+	maxCharCount := c.ContentWidth() / oneCharWidth
+	// 检查每行文本的长度，如果超过了画布的宽度，则进行换行
+	overflow := drawer.MeasureString(text).Ceil() - c.ContentWidth()
+	if overflow > oneCharWidth {
+		line := []rune(text)
+		// 溢出，需要按rune来裁剪到最大宽度
+		index := min(len(line), maxCharCount)
+		// 尝试裁剪到最大宽度
+		for i := 0; i < maxCharCount; i++ {
+			index += 1
+			displayWidth := drawer.MeasureString(string(line[:index])).Ceil()
+			if displayWidth >= c.ContentWidth() {
+				index--
+				break
+			}
+		}
+		output = append(output, string(line[:index]))
+		return c.cutText(drawer, string(line[index:]), output)
+	} else {
+		output = append(output, text)
+	}
+	return output
+}
+
 func measureTextHeight(opts text.Option) int {
 	return int(math.Ceil(opts.Size * opts.DPI / 72))
+}
+
+func min(a, b int) int {
+	if a > b {
+		return b
+	}
+	return a
 }
 
 func (c *Canvas) DrawRect(pos Position, color color.Color) {
