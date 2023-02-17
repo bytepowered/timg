@@ -15,10 +15,10 @@ import (
 
 var (
 	defaultPadding = Padding{
-		Left:   10,
-		Right:  10,
-		Top:    10,
-		Bottom: 10,
+		Left:   30,
+		Right:  30,
+		Top:    50,
+		Bottom: 50,
 	}
 )
 
@@ -42,19 +42,21 @@ func NewCanvas(width, height int) (*Canvas, error) {
 }
 
 func (c *Canvas) DrawText(opts text.Option, text string) {
-	c.drawTextLines(opts, strings.Split(text, "\n"), func(drawer *font.Drawer, inLines []string) []string {
-		output := make([]string, 0, len(inLines))
-		for _, line := range inLines {
-			output = c.cutText(drawer, line, output)
-		}
-		return output
-	})
+	c.drawTextLines(opts, strings.Split(text, "\n"),
+		func(drawer *font.Drawer, lines []string) []string {
+			output := make([]string, 0, len(lines))
+			for _, line := range lines {
+				output = c.cutText(drawer, line, output)
+			}
+			return output
+		})
 }
 
 func (c *Canvas) DrawLines(opts text.Option, text []string) {
-	c.drawTextLines(opts, text, func(drawer *font.Drawer, lines []string) []string {
-		return lines
-	})
+	c.drawTextLines(opts, text,
+		func(drawer *font.Drawer, lines []string) []string {
+			return lines
+		})
 }
 
 func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(*font.Drawer, []string) []string) {
