@@ -78,12 +78,12 @@ func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(
 		drawer.DrawString(str)
 		drawer.Dot.Y = drawer.Dot.Y + spacing
 		drawer.Dot.X = fixed.I(c._padding.Left)
-		// 创建新的画布，高度增加200，然后将原来的画布拷贝到新的画布上，最后将新的画布赋值给原来的画布
-		if c._canvas.Bounds().Dy() < drawer.Dot.Y.Ceil() {
-			newCanvas := image.NewRGBA(image.Rect(0, 0, c._canvas.Bounds().Dx(), c._canvas.Bounds().Dy()+100))
-			draw.Draw(newCanvas, newCanvas.Bounds(), &image.Uniform{C: pkg.White}, image.Point{}, draw.Src)
-			draw.Draw(newCanvas, c._canvas.Bounds(), c._canvas, image.Point{}, draw.Src)
-			c._canvas = newCanvas
+		bound := c._canvas.Bounds()
+		if bound.Dy() < drawer.Dot.Y.Ceil() {
+			canvas := image.NewRGBA(image.Rect(0, 0, bound.Dx(), bound.Dy()+100))
+			draw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: pkg.White}, image.Point{}, draw.Src)
+			draw.Draw(canvas, bound, c._canvas, image.Point{}, draw.Src)
+			c._canvas = canvas
 			drawer.Dst = c._canvas
 		}
 	}
