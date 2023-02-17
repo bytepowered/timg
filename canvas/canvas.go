@@ -42,30 +42,51 @@ func NewCanvas(width, height int) (*Canvas, error) {
 }
 
 func (c *Canvas) DrawText(opts text.Option, text string) {
-	// 按换行符号分割
-	lines := strings.Split(text, "\n")
-	c.DrawLines(opts, lines)
+	c.drawTextLines(opts, strings.Split(text, "\n"), func(drawer *font.Drawer, inLines []string) []string {
+		charWidth := drawer.MeasureString("中").Ceil()
+		output := make([]string, 0, len(inLines))
+		// 检查每行文字的长度，如果超过了画布的宽度，则进行换行
+		cutLine := func(line string) {
+			// line: 一行文字
+			overflow := drawer.MeasureString(line).Ceil() - c.ContentWidth()
+			if overflow > charWidth {
+				output = append(output, line)
+				output = append(output, "====================")
+			} else {
+				output = append(output, line)
+			}
+		}
+		for _, line := range inLines {
+			cutLine(line)
+		}
+		return output
+	})
 }
 
 func (c *Canvas) DrawLines(opts text.Option, text []string) {
-	face := truetype.NewFace(c._font, &truetype.Options{
-		Size:    opts.Size,
-		DPI:     opts.DPI,
-		Hinting: font.HintingVertical,
+	c.drawTextLines(opts, text, func(drawer *font.Drawer, lines []string) []string {
+		return lines
 	})
+}
+
+func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(*font.Drawer, []string) []string) {
 	drawer := &font.Drawer{
-		Dst:  c._canvas,
-		Src:  image.NewUniform(opts.Color),
-		Face: face,
+		Dst: c._canvas,
+		Src: image.NewUniform(opts.Color),
+		Face: truetype.NewFace(c._font, &truetype.Options{
+			Size:    opts.Size,
+			DPI:     opts.DPI,
+			Hinting: font.HintingVertical,
+		}),
 	}
 	// 绘制文字
 	height := measureTextHeight(opts)
 	drawer.Dot.Y = fixed.I(c._padding.Top)
 	drawer.Dot.X = fixed.I(c._padding.Left)
-	linespace := fixed.I(int(float64(height) * opts.Spacing))
-	for _, str := range text {
+	spacing := fixed.I(int(float64(height) * opts.Spacing))
+	for _, str := range transform(drawer, lines) {
 		drawer.DrawString(str)
-		drawer.Dot.Y = drawer.Dot.Y + linespace
+		drawer.Dot.Y = drawer.Dot.Y + spacing
 		drawer.Dot.X = fixed.I(c._padding.Left)
 	}
 }
@@ -94,6 +115,14 @@ func (c *Canvas) Width() int {
 
 func (c *Canvas) Height() int {
 	return c._canvas.Bounds().Dy()
+}
+
+func (c *Canvas) ContentWidth() int {
+	return c.Width() - (c._padding.Left + c._padding.Right)
+}
+
+func (c *Canvas) ContentHeight() int {
+	return c.Width() - (c._padding.Top + c._padding.Bottom)
 }
 
 type Position struct {

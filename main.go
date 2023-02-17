@@ -28,8 +28,7 @@ func main() {
 	//}
 	//c.DrawLines(text.DefaultOption, lines)
 	var str = `
-科技公司巨头YANDEX，全公司源代码被恶意泄漏，总共45GB，全世界黑客
-正在疯狂下载。本文末尾附下载地址。
+科技公司巨头YANDEX，全公司源代码被恶意泄漏，总共45GB，全世界黑客正在疯狂下载。本文末尾附下载地址。
 
 YANDEX IS A RUSSIAN INTERNET COMPANY BASED IN MOSCOW
 
@@ -55,5 +54,5 @@ YANDEX IS A RUSSIAN INTERNET COMPANY BASED IN MOSCOW
 		panic(err)
 	}
 	defer file.Close()
-	jpeg.Encode(file, c.Canvas(), &jpeg.Options{Quality: 40})
+	jpeg.Encode(file, c.Canvas(), &jpeg.Options{Quality: 50})
 }
