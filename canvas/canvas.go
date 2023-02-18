@@ -9,8 +9,8 @@ import (
 	"image/draw"
 	"math"
 	"strings"
-	"wxbot-shenbi/pkg"
-	"wxbot-shenbi/text"
+	"wxbot-txtimg/pkg"
+	"wxbot-txtimg/text"
 )
 
 var (
@@ -81,7 +81,7 @@ func (c *Canvas) drawTextLines(opts text.Option, lines []string, transform func(
 		bound := c._canvas.Bounds()
 		if bound.Dy() < drawer.Dot.Y.Ceil() {
 			srcimg := c._canvas
-			c.resize(bound.Dx(), bound.Dy()+100)
+			c.resize(bound.Dx(), bound.Dy()+height*2)
 			draw.Draw(c._canvas, bound, srcimg, image.Point{}, draw.Src)
 			drawer.Dst = c._canvas
 		}

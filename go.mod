@@ -1,4 +1,4 @@
-module wxbot-shenbi
+module wxbot-txtimg
 
 go 1.20
 
