@@ -5,7 +5,6 @@ import (
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	"image"
-	"image/color"
 	"image/draw"
 	"math"
 	"strings"
@@ -13,9 +12,9 @@ import (
 
 var (
 	defaultPadding = Padding{
-		Left:   30,
-		Right:  30,
-		Top:    30,
+		Left:   10,
+		Right:  10,
+		Top:    10,
 		Bottom: 0,
 	}
 )
@@ -40,46 +39,44 @@ func NewCanvas(width, height int) (*Canvas, error) {
 	}
 }
 
-func (c *Canvas) DrawText(opts FontOption, text string) {
-	tf := func(drawer *font.Drawer, lines []string) []string {
-		output := make([]string, 0, len(lines))
-		for _, line := range lines {
-			output = c.cutText(drawer, line, output)
-		}
-		return output
+func (c *Canvas) DrawText(fontOpts FontOption, text string) {
+	rawlines := strings.Split(text, "\n")
+	lines := make([]string, 0, len(rawlines))
+	fontFace := c.newFontFace(fontOpts)
+	for _, line := range rawlines {
+		lines = c.cut(fontFace, line, lines)
 	}
-	c.drawLines(opts, strings.Split(text, "\n"), tf)
+	c.draw(fontOpts, fontFace, lines)
 }
 
-func (c *Canvas) DrawLines(opts FontOption, text []string) {
-	c.drawLines(opts, text, func(drawer *font.Drawer, lines []string) []string {
-		return lines
-	})
+func (c *Canvas) DrawLines(fontOpts FontOption, lines []string) {
+	fontFace := c.newFontFace(fontOpts)
+	c.draw(fontOpts, fontFace, lines)
 }
 
-func (c *Canvas) drawLines(fontOpts FontOption, lines []string, transform func(*font.Drawer, []string) []string) {
+func (c *Canvas) draw(fontOpts FontOption, fontFace font.Face, lines []string) {
+	charHeight := measureTextHeight(fontOpts)
+	lineHeight := int(float64(charHeight) * fontOpts.Spacing)
+	// 确保图片高度大于文本行数高度
+	if c.rgba.Bounds().Dy() < len(lines)*lineHeight {
+		c.resize(c.Width(), len(lines)*lineHeight)
+	}
 	drawer := &font.Drawer{
-		Dst: c.rgba,
-		Src: image.NewUniform(fontOpts.Color),
-		Face: truetype.NewFace(c.font, &truetype.Options{
-			Size:    fontOpts.Size,
-			DPI:     fontOpts.DPI,
-			Hinting: font.HintingVertical,
-		}),
+		Dst:  c.rgba,
+		Src:  image.NewUniform(fontOpts.Color),
+		Face: fontFace,
 	}
 	// 绘制文字
-	height := measureTextHeight(fontOpts)
 	drawer.Dot.Y = fixed.I(c.padding.Top)
 	drawer.Dot.X = fixed.I(c.padding.Left)
-	spacing := fixed.I(int(float64(height) * fontOpts.Spacing))
-	for _, str := range transform(drawer, lines) {
+	for _, str := range lines {
 		drawer.DrawString(str)
-		drawer.Dot.Y = drawer.Dot.Y + spacing
+		drawer.Dot.Y = drawer.Dot.Y + fixed.I(lineHeight)
 		drawer.Dot.X = fixed.I(c.padding.Left)
 		bound := c.rgba.Bounds()
 		if bound.Dy() < drawer.Dot.Y.Ceil() {
 			srcimg := c.rgba
-			c.resize(bound.Dx(), bound.Dy()+height*2)
+			c.resize(bound.Dx(), bound.Dy()+lineHeight)
 			draw.Draw(c.rgba, bound, srcimg, image.Point{}, draw.Src)
 			drawer.Dst = c.rgba
 		}
@@ -89,14 +86,17 @@ func (c *Canvas) drawLines(fontOpts FontOption, lines []string, transform func(*
 func (c *Canvas) resize(width, height int) {
 	_new := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(_new, _new.Bounds(), &image.Uniform{C: White}, image.Point{}, draw.Src)
+	draw.Draw(_new, image.Rect(0, height-1, width, height), &image.Uniform{C: NiceRed}, image.Point{
+		X: 0, Y: height - 1,
+	}, draw.Src)
 	c.rgba = _new
 }
 
-func (c *Canvas) cutText(drawer *font.Drawer, text string, output []string) []string {
-	oneCharWidth := drawer.MeasureString("中").Ceil()
+func (c *Canvas) cut(face font.Face, text string, output []string) []string {
+	oneCharWidth := font.MeasureString(face, "中").Ceil()
 	maxCharCount := c.ContentWidth() / oneCharWidth
 	// 检查每行文本的长度，如果超过了画布的宽度，则进行换行
-	overflow := drawer.MeasureString(text).Ceil() - c.ContentWidth()
+	overflow := font.MeasureString(face, text).Ceil() - c.ContentWidth()
 	if overflow > oneCharWidth {
 		line := []rune(text)
 		// 溢出，需要按rune来裁剪到最大宽度
@@ -104,39 +104,26 @@ func (c *Canvas) cutText(drawer *font.Drawer, text string, output []string) []st
 		// 尝试裁剪到最大宽度
 		for i := 0; i < maxCharCount; i++ {
 			index += 1
-			displayWidth := drawer.MeasureString(string(line[:index])).Ceil()
+			displayWidth := font.MeasureString(face, string(line[:index])).Ceil()
 			if displayWidth >= c.ContentWidth() {
 				index--
 				break
 			}
 		}
 		output = append(output, string(line[:index]))
-		return c.cutText(drawer, string(line[index:]), output)
+		return c.cut(face, string(line[index:]), output)
 	} else {
 		output = append(output, text)
 	}
 	return output
 }
 
-func measureTextHeight(opts FontOption) int {
-	return int(math.Ceil(opts.Size * opts.DPI / 72))
-}
-
-func min(a, b int) int {
-	if a > b {
-		return b
-	}
-	return a
-}
-
-func (c *Canvas) DrawRect(pos Position, color color.Color) {
-	rect := image.Rect(
-		pos.X+c.padding.Left,
-		pos.Y+c.padding.Top,
-		pos.Width-(c.padding.Left+c.padding.Right),
-		pos.Height-(c.padding.Top+c.padding.Bottom),
-	)
-	draw.Draw(c.rgba, rect, &image.Uniform{C: color}, image.Point{}, draw.Src)
+func (c *Canvas) newFontFace(fontOpts FontOption) font.Face {
+	return truetype.NewFace(c.font, &truetype.Options{
+		Size:    fontOpts.Size,
+		DPI:     fontOpts.DPI,
+		Hinting: font.HintingVertical,
+	})
 }
 
 func (c *Canvas) Canvas() *image.RGBA {
@@ -157,6 +144,17 @@ func (c *Canvas) ContentWidth() int {
 
 func (c *Canvas) ContentHeight() int {
 	return c.Width() - (c.padding.Top + c.padding.Bottom)
+}
+
+func measureTextHeight(opts FontOption) int {
+	return int(math.Ceil(opts.Size * opts.DPI / 72))
+}
+
+func min(a, b int) int {
+	if a >= b {
+		return b
+	}
+	return a
 }
 
 type Position struct {
