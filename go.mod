@@ -1,4 +1,4 @@
-module wxbot-txtimg
+module github.com/bytepowered/timg
 
 go 1.20
 

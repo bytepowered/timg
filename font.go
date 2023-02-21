@@ -1,4 +1,4 @@
-package text
+package timg
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-type Option struct {
+type FontOption struct {
 	Size    float64
 	Spacing float64
 	DPI     float64
@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	DefaultOption = Option{
+	DefaultOption = FontOption{
 		Size:    12,
 		DPI:     OptionDPI,
 		Spacing: 1.5,
@@ -28,8 +28,8 @@ var (
 	}
 )
 
-func OptionOf(size float64, color color.Color) Option {
-	return Option{
+func OptionOf(size float64, color color.Color) FontOption {
+	return FontOption{
 		Size:  size,
 		DPI:   OptionDPI,
 		Color: color,
