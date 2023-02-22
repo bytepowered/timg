@@ -16,27 +16,27 @@ type FontOption struct {
 }
 
 const (
-	OptionDPI = 180
+	FontOptionDPI = 180
 )
 
 var (
-	DefaultOption = FontOption{
+	FontOptionDefault = FontOption{
 		Size:    12,
-		DPI:     OptionDPI,
+		DPI:     FontOptionDPI,
 		Spacing: 1.5,
 		Color:   color.RGBA{R: 0, G: 0, B: 0, A: 255},
 	}
 )
 
-func OptionOf(size float64, color color.Color) FontOption {
+func FontOptionOf(size float64, color color.Color) FontOption {
 	return FontOption{
 		Size:  size,
-		DPI:   OptionDPI,
+		DPI:   FontOptionDPI,
 		Color: color,
 	}
 }
 
-func Load(path string) (fnt *truetype.Font, err error) {
+func LoadFont(path string) (fnt *truetype.Font, err error) {
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read text file error: %s", err)

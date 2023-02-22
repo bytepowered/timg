@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/wxbot-txtimg.iml" filepath="$PROJECT_DIR$/.idea/wxbot-txtimg.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/wxbot-timg.iml" filepath="$PROJECT_DIR$/.idea/wxbot-timg.iml" />
     </modules>
   </component>
 </project>

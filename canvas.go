@@ -1,6 +1,7 @@
 package timg
 
 import (
+	"fmt"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -20,6 +21,7 @@ var (
 )
 
 type Canvas struct {
+	debug   bool
 	dpi     float64
 	fpath   string
 	font    *truetype.Font
@@ -27,39 +29,30 @@ type Canvas struct {
 	padding Padding
 }
 
-func NewCanvas(width, height int) (*Canvas, error) {
-	rect := image.Rect(0, 0, width, height)
-	canvas := image.NewRGBA(rect)
-	draw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: White}, image.Point{}, draw.Src)
-	// text
-	if _font, err := Load("./resources/msyh.ttf"); err != nil {
-		return nil, err
-	} else {
-		return &Canvas{rgba: canvas, font: _font, padding: defaultPadding}, nil
-	}
-}
+type CanvasOption func(canvas *Canvas)
 
 func (c *Canvas) DrawText(fontOpts FontOption, text string) {
-	rawlines := strings.Split(text, "\n")
-	lines := make([]string, 0, len(rawlines))
+	_lines := strings.Split(text, "\n")
+	lines := make([]string, 0, len(_lines)*2)
 	fontFace := c.newFontFace(fontOpts)
-	for _, line := range rawlines {
+	for _, line := range _lines {
 		lines = c.cut(fontFace, line, lines)
 	}
-	c.draw(fontOpts, fontFace, lines)
-}
-
-func (c *Canvas) DrawLines(fontOpts FontOption, lines []string) {
-	fontFace := c.newFontFace(fontOpts)
 	c.draw(fontOpts, fontFace, lines)
 }
 
 func (c *Canvas) draw(fontOpts FontOption, fontFace font.Face, lines []string) {
 	charHeight := measureTextHeight(fontOpts)
 	lineHeight := int(float64(charHeight) * fontOpts.Spacing)
+	if c.debug {
+		fmt.Printf("[DEBUG] draw char height: %d, line height: %d, lines: %d \n", charHeight, lineHeight, len(lines))
+	}
 	// 确保图片高度大于文本行数高度
-	if c.rgba.Bounds().Dy() < len(lines)*lineHeight {
-		c.resize(c.Width(), len(lines)*lineHeight)
+	if pageHeight := len(lines)*lineHeight + lineHeight; c.Height() < pageHeight {
+		c.resize(c.Width(), pageHeight)
+		if c.debug {
+			fmt.Printf("[DEBUG] draw resize canvas height: %d\n", pageHeight)
+		}
 	}
 	drawer := &font.Drawer{
 		Dst:  c.rgba,
@@ -67,28 +60,33 @@ func (c *Canvas) draw(fontOpts FontOption, fontFace font.Face, lines []string) {
 		Face: fontFace,
 	}
 	// 绘制文字
-	drawer.Dot.Y = fixed.I(c.padding.Top)
+	drawer.Dot.Y = fixed.I(c.padding.Top) + fixed.I(lineHeight)
 	drawer.Dot.X = fixed.I(c.padding.Left)
-	for _, str := range lines {
-		drawer.DrawString(str)
+	for _, line := range lines {
+		drawer.DrawString(line)
+		if c.debug {
+			draw.Draw(c.rgba,
+				image.Rect(0, drawer.Dot.Y.Ceil(), c.Width(), drawer.Dot.Y.Ceil()+1),
+				&image.Uniform{C: NiceGray},
+				image.Point{
+					X: 0, Y: drawer.Dot.Y.Ceil(),
+				},
+				draw.Src)
+			fmt.Printf("[DEBUG] draw text line: %s\n", line)
+		}
 		drawer.Dot.Y = drawer.Dot.Y + fixed.I(lineHeight)
 		drawer.Dot.X = fixed.I(c.padding.Left)
-		bound := c.rgba.Bounds()
-		if bound.Dy() < drawer.Dot.Y.Ceil() {
-			srcimg := c.rgba
-			c.resize(bound.Dx(), bound.Dy()+lineHeight)
-			draw.Draw(c.rgba, bound, srcimg, image.Point{}, draw.Src)
-			drawer.Dst = c.rgba
-		}
 	}
 }
 
 func (c *Canvas) resize(width, height int) {
 	_new := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(_new, _new.Bounds(), &image.Uniform{C: White}, image.Point{}, draw.Src)
-	draw.Draw(_new, image.Rect(0, height-1, width, height), &image.Uniform{C: NiceRed}, image.Point{
-		X: 0, Y: height - 1,
-	}, draw.Src)
+	if c.debug {
+		draw.Draw(_new, image.Rect(0, height-1, width, height), &image.Uniform{C: NiceRed}, image.Point{
+			X: 0, Y: height - 1,
+		}, draw.Src)
+	}
 	c.rgba = _new
 }
 
@@ -144,6 +142,60 @@ func (c *Canvas) ContentWidth() int {
 
 func (c *Canvas) ContentHeight() int {
 	return c.Width() - (c.padding.Top + c.padding.Bottom)
+}
+
+func WithDebug(debugEnabled bool) CanvasOption {
+	return func(canvas *Canvas) {
+		canvas.debug = debugEnabled
+	}
+}
+
+func WithDPI(dpi float64) CanvasOption {
+	return func(canvas *Canvas) {
+		canvas.dpi = dpi
+	}
+}
+
+func WithFontPath(fpath string) CanvasOption {
+	return func(canvas *Canvas) {
+		canvas.fpath = fpath
+	}
+}
+
+func WithPadding(padding Padding) CanvasOption {
+	return func(canvas *Canvas) {
+		canvas.padding = padding
+	}
+}
+
+func NewDefaultCanvas(width, height int) (*Canvas, error) {
+	return NewCanvas(width, height,
+		WithPadding(defaultPadding),
+		WithDPI(FontOptionDPI),
+		WithDebug(false),
+	)
+}
+
+func NewCanvas(width, height int, opts ...CanvasOption) (*Canvas, error) {
+	box := image.Rect(0, 0, width, height)
+	rgba := image.NewRGBA(box)
+	draw.Draw(rgba, rgba.Bounds(), &image.Uniform{C: White}, image.Point{}, draw.Src)
+	canvas := &Canvas{rgba: rgba, padding: defaultPadding}
+	// options
+	for _, opt := range opts {
+		opt(canvas)
+	}
+	// init font
+	fpath := canvas.fpath
+	if fpath == "" {
+		fpath = "./resources/msyh.ttf"
+	}
+	if _font, err := LoadFont(fpath); err != nil {
+		return nil, fmt.Errorf("load font failed: %w", err)
+	} else {
+		canvas.font = _font
+	}
+	return canvas, nil
 }
 
 func measureTextHeight(opts FontOption) int {
