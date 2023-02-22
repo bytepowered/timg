@@ -54,26 +54,28 @@ func (c *Canvas) draw(fontOpts FontOption, fontFace font.Face, lines []string) {
 			fmt.Printf("[DEBUG] draw resize canvas height: %d\n", pageHeight)
 		}
 	}
+	if c.debug {
+		for i := 0; i < len(lines)+1; i++ {
+			y := i*lineHeight + c.padding.Top
+			draw.Draw(c.rgba,
+				image.Rect(0, y, c.Width(), y+1),
+				&image.Uniform{C: NiceGray},
+				image.Point{
+					X: 0, Y: y,
+				},
+				draw.Src)
+		}
+	}
 	drawer := &font.Drawer{
 		Dst:  c.rgba,
 		Src:  image.NewUniform(fontOpts.Color),
 		Face: fontFace,
 	}
 	// 绘制文字
-	drawer.Dot.Y = fixed.I(c.padding.Top) + fixed.I(lineHeight)
+	drawer.Dot.Y = fixed.I(c.padding.Top + lineHeight)
 	drawer.Dot.X = fixed.I(c.padding.Left)
 	for _, line := range lines {
 		drawer.DrawString(line)
-		if c.debug {
-			draw.Draw(c.rgba,
-				image.Rect(0, drawer.Dot.Y.Ceil(), c.Width(), drawer.Dot.Y.Ceil()+1),
-				&image.Uniform{C: NiceGray},
-				image.Point{
-					X: 0, Y: drawer.Dot.Y.Ceil(),
-				},
-				draw.Src)
-			fmt.Printf("[DEBUG] draw text line: %s\n", line)
-		}
 		drawer.Dot.Y = drawer.Dot.Y + fixed.I(lineHeight)
 		drawer.Dot.X = fixed.I(c.padding.Left)
 	}
