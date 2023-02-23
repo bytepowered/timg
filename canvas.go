@@ -21,12 +21,12 @@ var (
 )
 
 type Canvas struct {
-	debug   bool
-	dpi     float64
-	fpath   string
-	font    *truetype.Font
-	rgba    *image.RGBA
-	padding Padding
+	debug    bool
+	dpi      float64
+	fontPath string
+	font     *truetype.Font
+	rgba     *image.RGBA
+	padding  Padding
 }
 
 type CanvasOption func(canvas *Canvas)
@@ -48,7 +48,7 @@ func (c *Canvas) draw(fontOpts FontOption, fontFace font.Face, lines []string) {
 		fmt.Printf("[DEBUG] draw char height: %d, line height: %d, lines: %d \n", charHeight, lineHeight, len(lines))
 	}
 	// 确保图片高度大于文本行数高度
-	if pageHeight := len(lines)*lineHeight + lineHeight; c.Height() < pageHeight {
+	if pageHeight := (len(lines) + 1) * lineHeight; c.Height() < pageHeight {
 		c.resize(c.Width(), pageHeight)
 		if c.debug {
 			fmt.Printf("[DEBUG] draw resize canvas height: %d\n", pageHeight)
@@ -160,7 +160,7 @@ func WithDPI(dpi float64) CanvasOption {
 
 func WithFontPath(fpath string) CanvasOption {
 	return func(canvas *Canvas) {
-		canvas.fpath = fpath
+		canvas.fontPath = fpath
 	}
 }
 
@@ -170,8 +170,8 @@ func WithPadding(padding Padding) CanvasOption {
 	}
 }
 
-func NewDefaultCanvas(width, height int) (*Canvas, error) {
-	return NewCanvas(width, height,
+func NewDefaultCanvas() (*Canvas, error) {
+	return NewCanvas(1032, 100,
 		WithPadding(defaultPadding),
 		WithDPI(FontOptionDPI),
 		WithDebug(false),
@@ -188,11 +188,11 @@ func NewCanvas(width, height int, opts ...CanvasOption) (*Canvas, error) {
 		opt(canvas)
 	}
 	// init font
-	fpath := canvas.fpath
-	if fpath == "" {
-		fpath = "./resources/msyh.ttf"
+	fontPath := canvas.fontPath
+	if fontPath == "" {
+		fontPath = "./resources/msyh.ttf"
 	}
-	if _font, err := LoadFont(fpath); err != nil {
+	if _font, err := LoadFont(fontPath); err != nil {
 		return nil, fmt.Errorf("load font failed: %w", err)
 	} else {
 		canvas.font = _font
